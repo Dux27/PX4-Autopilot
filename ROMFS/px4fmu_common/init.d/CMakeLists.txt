@@ -42,9 +42,13 @@ px4_add_romfs_files(
 	rc.vehicle_setup
 
 	# TODO
-	rc.balloon_apps
-	rc.balloon_defaults
+	# rc.balloon_apps
+	# rc.balloon_defaults
 	rc.sysinit
+
+	# Do Testowania czy CONFIG_SESE_OMNI_CONTROL działa
+	#rc.sese_apps
+	#rc.sese_defaults
 )
 
 if(CONFIG_MODULES_AIRSHIP_ATT_CONTROL)
@@ -123,5 +127,12 @@ endif()
 if(CONFIG_MODULES_TEMPERATURE_COMPENSATION)
 	px4_add_romfs_files(
 		rc.thermal_cal
+	)
+endif()
+
+if(CONFIG_MODULES_SESE_OMNI_CONTROL)
+	px4_add_romfs_files(
+		rc.sese_apps
+		rc.sese_defaults
 	)
 endif()

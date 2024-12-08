@@ -1,0 +1,6 @@
+menuconfig MODULES_SESE_OMNI_CONTROL
+	bool "sese_omni_control"
+	default n
+	depends on MODULES_CONTROL_ALLOCATOR
+	---help---
+		Enable support for control of omni-directional boats

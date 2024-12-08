@@ -87,6 +87,11 @@ then
 fi
 
 
+if [ $VEHICLE_TYPE = sese ]
+then
+	. ${R}etc/init.d/rc.sese_apps
+fi
+
 
 #
 # Generic setup (autostart ID not found).
