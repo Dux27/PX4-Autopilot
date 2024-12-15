@@ -21,3 +21,20 @@ param set-default RTL_RETURN_ALT 30
 param set-default RTL_DESCEND_ALT 10
 
 param set-default GPS_UBX_DYNMODEL 6
+
+
+#
+# VEHICLE_TYPE sese: Sets the vehicle type to "sese".
+#
+# MAV_TYPE 2: Sets the MAV (Micro Air Vehicle) type to 2, which corresponds to a quadrotor.
+#
+# IMU_GYRO_RATEMAX 800: If the current IMU_GYRO_RATEMAX parameter is 400, it sets it to 800. This parameter defines the maximum rate for the IMU gyroscope.
+#
+# NAV_ACC_RAD 2: Sets the navigation acceptance radius to 2 meters. This is the radius within which the vehicle considers it has reached a waypoint.
+#
+# RTL_RETURN_ALT 30: Sets the return-to-launch (RTL) return altitude to 30 meters. This is the altitude the vehicle will ascend to before returning to the launch point.
+#
+# RTL_DESCEND_ALT 10: Sets the RTL descend altitude to 10 meters. This is the altitude the vehicle will descend to before landing during RTL.
+#
+# GPS_UBX_DYNMODEL 6: Sets the GPS UBX dynamic model to 6, which is typically used for airborne applications with a high dynamic range.
+#

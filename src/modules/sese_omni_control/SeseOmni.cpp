@@ -87,10 +87,12 @@ void SeseOmni::updateParams()
 
 void SeseOmni::Run()
 {
+	std::cout<< "Running SeseOmni" << std::endl;
 	if (should_exit())
 	{
 		ScheduleClear();
 		exit_and_cleanup();
+		std::cout << "Exiting SeseOmni" << std::endl;
 	}
 
 	hrt_abstime now = hrt_absolute_time();
@@ -101,6 +103,7 @@ void SeseOmni::Run()
 		parameter_update_s parameter_update;
 		_parameter_update_sub.copy(&parameter_update);
 		updateParams();
+		std::cout << "Parameters updated" << std::endl;
 	}
 
 	if (_vehicle_control_mode_sub.updated())
@@ -111,12 +114,13 @@ void SeseOmni::Run()
 		{
 			_mission_driving = vehicle_control_mode.flag_control_auto_enabled;
 		}
+		std::cout << "Mission driving: " << _mission_driving << std::endl;
 	}
 
 	if (_vehicle_status_sub.updated())
 	{
 		vehicle_status_s vehicle_status{};
-
+		std::cout << "Vehicle status updated" << std::endl;
 		if (_vehicle_status_sub.copy(&vehicle_status))
 		{
 			_manual_driving = (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_MANUAL);
@@ -126,7 +130,7 @@ void SeseOmni::Run()
 
 		}
 	}
-
+	std::cout<< "Manual driving: " << _manual_driving << std::endl;
 	if (_manual_driving)
 	{
 		// Manual mode
@@ -141,6 +145,7 @@ void SeseOmni::Run()
 				vehicle_torque_setpoint_s torque_setpoint{};
 				vehicle_thrust_setpoint_s thrust_setpoint{};
 				actuator_controls_status_s status;
+				std::cout << "Manual control setpoint updated" << std::endl;
 
 				thrust_setpoint.timestamp = now;
 				thrust_setpoint.xyz[0] = manual_control_setpoint.throttle * thrust_scaling.get();

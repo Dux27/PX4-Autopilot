@@ -1,27 +1,12 @@
 #!/bin/sh
 #
-# UUV default parameters.
+# Sese Omni Boat default parameters.
 #
 # NOTE: Script variables are declared/initialized/unset in the rcS script.
 #
 
-# set VEHICLE_TYPE uuv
-
-# MAV_TYPE_SUBMARINE 12
-# param set-default MAV_TYPE 11
-
-# =====================================================
 set VEHICLE_TYPE sese
 
 # MAV_TYPE_QUADROTOR 2
-param set MAV_TYPE 2
-
-# # Set modules
-# set MIXER_MODULE none
-# set CONTROL_ALLOCATOR_MODULE sese_omni
-# set ATT_CONTROL_MODULE sese_omni
-
-# # Other parameters
-# param set CA_AIRFRAME 0
-# param set CA_METHOD 1
+param set-default MAV_TYPE 2
 
