@@ -23,8 +23,8 @@
  * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
@@ -35,15 +35,15 @@
 #include <iostream>
 
 SeseOmni::SeseOmni() : ModuleParams(nullptr),
-    WorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers) // Changed from rate_ctrl
+					   ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::rate_ctrl)
 {
-    updateParams();
+	updateParams();
 }
 
 bool SeseOmni::init()
 {
-    // Remove ScheduleOnInterval call since we're using WorkItem now
-    return true;
+	ScheduleOnInterval(10_ms); // 100 Hz
+	return true;
 }
 
 void SeseOmni::updateParams()
@@ -87,12 +87,10 @@ void SeseOmni::updateParams()
 
 void SeseOmni::Run()
 {
-	std::cout<< "Running SeseOmni" << std::endl;
 	if (should_exit())
 	{
 		ScheduleClear();
 		exit_and_cleanup();
-		std::cout << "Exiting SeseOmni" << std::endl;
 	}
 
 	hrt_abstime now = hrt_absolute_time();
@@ -103,7 +101,6 @@ void SeseOmni::Run()
 		parameter_update_s parameter_update;
 		_parameter_update_sub.copy(&parameter_update);
 		updateParams();
-		std::cout << "Parameters updated" << std::endl;
 	}
 
 	if (_vehicle_control_mode_sub.updated())
@@ -114,13 +111,12 @@ void SeseOmni::Run()
 		{
 			_mission_driving = vehicle_control_mode.flag_control_auto_enabled;
 		}
-		std::cout << "Mission driving: " << _mission_driving << std::endl;
 	}
 
 	if (_vehicle_status_sub.updated())
 	{
 		vehicle_status_s vehicle_status{};
-		std::cout << "Vehicle status updated" << std::endl;
+
 		if (_vehicle_status_sub.copy(&vehicle_status))
 		{
 			_manual_driving = (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_MANUAL);
@@ -130,9 +126,10 @@ void SeseOmni::Run()
 
 		}
 	}
-	std::cout<< "Manual driving: " << _manual_driving << std::endl;
+
 	if (_manual_driving)
 	{
+		std::cout << " Manual driving" << std::endl;
 		// Manual mode
 		// directly produce setpoints from the manual control setpoint (joystick)
 		if (_manual_control_setpoint_sub.updated())
@@ -145,10 +142,9 @@ void SeseOmni::Run()
 				vehicle_torque_setpoint_s torque_setpoint{};
 				vehicle_thrust_setpoint_s thrust_setpoint{};
 				actuator_controls_status_s status;
-				std::cout << "Manual control setpoint updated" << std::endl;
 
 				thrust_setpoint.timestamp = now;
-				thrust_setpoint.xyz[0] = manual_control_setpoint.throttle * thrust_scaling.get();
+				thrust_setpoint.xyz[0] = -manual_control_setpoint.throttle * thrust_scaling.get();
 				thrust_setpoint.xyz[1] = manual_control_setpoint.yaw * thrust_scaling.get();
 				thrust_setpoint.xyz[2] = 0.0f;
 
@@ -182,7 +178,7 @@ void SeseOmni::Run()
 				vehicle_thrust_setpoint_s thrust_setpoint{};
 
 				thrust_setpoint.timestamp = now;
-				thrust_setpoint.xyz[0] = manual_control_setpoint.throttle * thrust_scaling.get();
+				thrust_setpoint.xyz[0] = -manual_control_setpoint.throttle * thrust_scaling.get();
 				thrust_setpoint.xyz[1] = manual_control_setpoint.yaw * thrust_scaling.get();
 				thrust_setpoint.xyz[2] = heading_sp.get();
 
@@ -218,6 +214,7 @@ void SeseOmni::Run()
 	}
 	else if(_position_control){
 		if (_local_pos_sub.update(&_local_pos)) {
+			std::cout << " Position control" << std::endl;
 			const float dt = math::min((now - _time_stamp_last), 5000_ms) / 1e3f;
 			_time_stamp_last = now;
 
@@ -230,8 +227,8 @@ void SeseOmni::Run()
 			float y_pos_ned = _local_pos.y;
 			float velocity_x_ned = _local_pos.vx;
 			float velocity_y_ned = _local_pos.vy;
-			// float acceleration_x_ned = _local_pos.ax;
-			// float acceleration_y_ned = _local_pos.ay;
+			float acceleration_x_ned = _local_pos.ax;
+			float acceleration_y_ned = _local_pos.ay;
 
 			vehicle_torque_setpoint_s torque_setpoint{};
 			vehicle_thrust_setpoint_s thrust_setpoint{};
@@ -249,38 +246,18 @@ void SeseOmni::Run()
 			// Transformation from NED to body frame
 			float sin_heading = sin(heading);
 			float cos_heading = cos(heading);
-			// float velocity_x_body_frame = cos_heading * velocity_x_ned - sin_heading * velocity_y_ned;
-			// float velocity_y_body_frame = sin_heading * velocity_x_ned + cos_heading * velocity_y_ned;
-			// float acceleration_x_body_frame = cos_heading * acceleration_x_ned - sin_heading * acceleration_y_ned;
-			// float acceleration_y_body_frame = sin_heading * acceleration_x_ned + cos_heading * acceleration_y_ned;
+			float velocity_x_body_frame = cos_heading * velocity_x_ned + sin_heading * velocity_y_ned;
+			float velocity_y_body_frame = -sin_heading * velocity_x_ned + cos_heading * velocity_y_ned;
+			float acceleration_x_body_frame = cos_heading * acceleration_x_ned + sin_heading * acceleration_y_ned;
+			float acceleration_y_body_frame = -sin_heading * acceleration_x_ned + cos_heading * acceleration_y_ned;
 
-			float thrust_setpoint_x_ned = 0.0;
-			float thrust_setpoint_y_ned = 0.0;
-			float thrust_setpoint_z_ned = 0.0;
+			float velocity_x_setpoint_body_frame = cos_heading * velocity_x_setpoint + sin_heading * velocity_y_setpoint;
+			float velocity_y_setpoint_body_frame = -sin_heading * velocity_x_setpoint + cos_heading * velocity_y_setpoint;
 
 			thrust_setpoint.timestamp = now;
-			thrust_setpoint_x_ned = pid_calculate(&_x_velocity_pid, velocity_x_setpoint, velocity_x_ned, 0.0f, dt)*thrust_scaling.get();
-			thrust_setpoint_y_ned = pid_calculate(&_y_velocity_pid, velocity_y_setpoint, velocity_y_ned, 0.0f, dt)*thrust_scaling.get();
-			thrust_setpoint_z_ned = 0.0f;
-
-			thrust_setpoint.xyz[0] = cos_heading * thrust_setpoint_x_ned - sin_heading * thrust_setpoint_y_ned;
-			thrust_setpoint.xyz[1] = sin_heading * thrust_setpoint_x_ned + cos_heading * thrust_setpoint_y_ned;
-			thrust_setpoint.xyz[2] = thrust_setpoint_z_ned;
-
-			for(int i = -2; i<=2; i++){
-				float error = 0.01;
-				float setpoint = 1.57;
-				if(heading <= setpoint*i+error && heading >= setpoint*i-error){
-					std::cout << "x_pos_setpoint: " << x_pos_setpoint << std::endl;
-					std::cout << "y_pos_setpoint: " << y_pos_setpoint << std::endl;
-					std::cout << "x_pos_ned: " << x_pos_ned << std::endl;
-					std::cout << "y_pos_ned: " << y_pos_ned << std::endl;
-					std::cout << "Heading: " << heading << std::endl;
-					std::cout << "thrust_setpoint.xyz[0]: " << thrust_setpoint.xyz[0] << std::endl;
-					std::cout << "thrust_setpoint.xyz[1]: " << thrust_setpoint.xyz[1] << std::endl;
-					std::cout << "thrust_setpoint.xyz[2]: " << thrust_setpoint.xyz[2] << std::endl;
-				}
-			}
+			thrust_setpoint.xyz[0] = pid_calculate(&_x_velocity_pid, velocity_x_setpoint_body_frame, velocity_x_body_frame, acceleration_x_body_frame, dt)*thrust_scaling.get();
+			thrust_setpoint.xyz[1] = pid_calculate(&_y_velocity_pid, velocity_y_setpoint_body_frame, velocity_y_body_frame, acceleration_y_body_frame, dt)*thrust_scaling.get();
+			thrust_setpoint.xyz[2] = 0.0f;
 
 
 			status.timestamp = now;
