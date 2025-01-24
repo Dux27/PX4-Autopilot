@@ -127,6 +127,17 @@ void SeseOmni::Run()
 		}
 	}
 
+	// if (_gz_local_pos_sub.updated()){
+        // 	vehicle_local_position_s _gazebo_local_pos{};
+
+        // 	if (_gz_local_pos_sub.copy(&_gazebo_local_pos)){
+	// 		std::cout << "Gazebo local position" << std::endl;
+        //     		std::cout << "X: " << _gazebo_local_pos.x << std::endl;
+	// 		std::cout << "Y: " <<_gazebo_local_pos.y << std::endl;
+        // 	}
+
+   	// }
+
 	if (_manual_driving)
 	{
 		std::cout << " Manual driving" << std::endl;
@@ -144,7 +155,7 @@ void SeseOmni::Run()
 				actuator_controls_status_s status;
 
 				thrust_setpoint.timestamp = now;
-				thrust_setpoint.xyz[0] = -manual_control_setpoint.throttle * thrust_scaling.get();
+				thrust_setpoint.xyz[0] = manual_control_setpoint.throttle * thrust_scaling.get();
 				thrust_setpoint.xyz[1] = manual_control_setpoint.yaw * thrust_scaling.get();
 				thrust_setpoint.xyz[2] = 0.0f;
 
@@ -213,7 +224,7 @@ void SeseOmni::Run()
 		}
 	}
 	else if(_position_control){
-		if (_local_pos_sub.update(&_local_pos)) {
+		if (_gz_local_pos_sub.update(&_local_pos)) {
 			std::cout << " Position control" << std::endl;
 			const float dt = math::min((now - _time_stamp_last), 5000_ms) / 1e3f;
 			_time_stamp_last = now;
@@ -221,6 +232,9 @@ void SeseOmni::Run()
 			float heading_setpoint = heading_sp.get();
 			float x_pos_setpoint = x_pos_sp.get();
 			float y_pos_setpoint = y_pos_sp.get();
+			std::cout << "X pos setpoint: " << x_pos_setpoint << std::endl;
+			std::cout << "Y pos setpoint: " << y_pos_setpoint << std::endl;
+			std::cout << "Heading setpoint: " << heading_setpoint << std::endl;
 
 			float heading = _local_pos.heading;
 			float x_pos_ned = _local_pos.x;

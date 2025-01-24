@@ -174,5 +174,10 @@ subscriptions:
   - topic: /fmu/in/aux_global_position
     type: px4_msgs::msg::VehicleGlobalPosition
 
+# Addeded by me:
+
+  - topic: /fmu/in/gazebo_vehicle_local_position
+    type: px4_msgs::msg::VehicleLocalPosition
+
 # Create uORB::PublicationMulti
 subscriptions_multi:

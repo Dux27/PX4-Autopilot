@@ -48,6 +48,7 @@
 #include <uORB/topics/actuator_controls_status.h>
 #include <uORB/topics/vehicle_torque_setpoint.h>
 #include <uORB/topics/vehicle_thrust_setpoint.h>
+// #include <uORB/topics/gazebo_vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <lib/pid/pid.h>
@@ -82,6 +83,7 @@ private:
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
 	uORB::Subscription _local_pos_setpoint_sub{ORB_ID(vehicle_local_position_setpoint)};
+	uORB::Subscription _gz_local_pos_sub{ORB_ID(gazebo_vehicle_local_position)};
 
 	// uORB::Publication<differential_drive_setpoint_s> _differential_drive_setpoint_pub{ORB_ID(differential_drive_setpoint)};
 
