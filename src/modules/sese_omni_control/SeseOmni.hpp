@@ -49,6 +49,7 @@
 #include <uORB/topics/vehicle_torque_setpoint.h>
 #include <uORB/topics/vehicle_thrust_setpoint.h>
 // #include <uORB/topics/gazebo_vehicle_local_position.h>
+#include <uORB/topics/trajectory_setpoint.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <lib/pid/pid.h>
@@ -84,6 +85,7 @@ private:
 	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
 	uORB::Subscription _local_pos_setpoint_sub{ORB_ID(vehicle_local_position_setpoint)};
 	uORB::Subscription _gz_local_pos_sub{ORB_ID(gazebo_vehicle_local_position)};
+	uORB::Subscription _trajectory_setpoint_sub{ORB_ID(trajectory_setpoint)};
 
 	// uORB::Publication<differential_drive_setpoint_s> _differential_drive_setpoint_pub{ORB_ID(differential_drive_setpoint)};
 
@@ -97,8 +99,11 @@ private:
 	bool _acro_driving = false;
 	bool _position_control = false;
 	bool _hold_mode = false;
+	bool _offboard_mode = false;
+
 	vehicle_local_position_setpoint_s _local_pos_setpoint{};
 	vehicle_local_position_s _local_pos{};
+	trajectory_setpoint_s _trajectory_setpoint{};
 	hrt_abstime _time_stamp_last{0}; /**< time stamp when task was last updated */
 
 	// PID attitude controller
@@ -116,6 +121,10 @@ private:
 
 	float _x_pos_sp{0.0};
 	float _y_pos_sp{0.0};
+
+	float trajectory_setpoint_x{0.0};
+	float trajectory_setpoint_y{0.0};
+	float trajectory_setpoint_heading{0.0};
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::ATT_P_GAIN>) att_p_gain,

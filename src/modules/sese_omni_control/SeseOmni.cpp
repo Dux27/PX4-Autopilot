@@ -123,6 +123,7 @@ void SeseOmni::Run()
 			_acro_driving = (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_ACRO);
 			_position_control = (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_POSCTL);
 			_hold_mode = (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER);
+			_offboard_mode = (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_OFFBOARD);
 
 		}
 	}
@@ -328,6 +329,73 @@ void SeseOmni::Run()
 			thrust_setpoint.timestamp = now;
 			thrust_setpoint.xyz[0] = pid_calculate(&_x_velocity_pid, velocity_x_setpoint, velocity_x_body_frame, acceleration_x_body_frame, dt)*thrust_scaling.get();
 			thrust_setpoint.xyz[1] = pid_calculate(&_y_velocity_pid, velocity_y_setpoint, velocity_y_body_frame, acceleration_y_body_frame, dt)*thrust_scaling.get();
+			thrust_setpoint.xyz[2] = 0.0f;
+
+
+			status.timestamp = now;
+			for (int i = 0; i < 3; i++)
+			{
+				status.control_power[i] = 100.0f;
+			}
+
+			_vehicle_torque_setpoint_pub.publish(torque_setpoint);
+			_vehicle_thrust_setpoint_pub.publish(thrust_setpoint);
+			_actuator_controls_status_pub.publish(status);
+		}
+	}
+	else if(_offboard_mode){
+		if (_trajectory_setpoint_sub.update(&_trajectory_setpoint)){
+			trajectory_setpoint_x = _trajectory_setpoint.position[0];
+			trajectory_setpoint_y = _trajectory_setpoint.position[1];
+
+			// Saturation
+			trajectory_setpoint_heading = math::max(_trajectory_setpoint.yaw, -3.14f);
+			trajectory_setpoint_heading = math::min(trajectory_setpoint_heading, 3.14f);
+
+		}
+		if (_gz_local_pos_sub.update(&_local_pos)) {
+			std::cout << " Offboard mode" << std::endl;
+			std::cout << "X pos setpoint: " << trajectory_setpoint_x << std::endl;
+			std::cout << "Y pos setpoint: " << trajectory_setpoint_y << std::endl;
+			std::cout << "Heading setpoint: " << trajectory_setpoint_heading << std::endl;
+			const float dt = math::min((now - _time_stamp_last), 5000_ms) / 1e3f;
+			_time_stamp_last = now;
+
+			float heading = _local_pos.heading;
+			float x_pos_ned = _local_pos.x;
+			float y_pos_ned = _local_pos.y;
+			float velocity_x_ned = _local_pos.vx;
+			float velocity_y_ned = _local_pos.vy;
+			float acceleration_x_ned = _local_pos.ax;
+			float acceleration_y_ned = _local_pos.ay;
+
+			vehicle_torque_setpoint_s torque_setpoint{};
+			vehicle_thrust_setpoint_s thrust_setpoint{};
+			actuator_controls_status_s status;
+
+			torque_setpoint.timestamp = now;
+			torque_setpoint.xyz[0] = 0.0f;
+			torque_setpoint.xyz[1] = 0.0f;
+			torque_setpoint.xyz[2] = pid_calculate(&_att_pid, trajectory_setpoint_heading, heading, 0.0f, dt)*torque_scaling.get();
+
+
+			float velocity_x_setpoint = pid_calculate(&_x_pos_pid, trajectory_setpoint_x, x_pos_ned, velocity_x_ned, dt);
+			float velocity_y_setpoint = pid_calculate(&_y_pos_pid, trajectory_setpoint_y, y_pos_ned, velocity_y_ned, dt);
+
+			// Transformation from NED to body frame
+			float sin_heading = sin(heading);
+			float cos_heading = cos(heading);
+			float velocity_x_body_frame = cos_heading * velocity_x_ned + sin_heading * velocity_y_ned;
+			float velocity_y_body_frame = -sin_heading * velocity_x_ned + cos_heading * velocity_y_ned;
+			float acceleration_x_body_frame = cos_heading * acceleration_x_ned + sin_heading * acceleration_y_ned;
+			float acceleration_y_body_frame = -sin_heading * acceleration_x_ned + cos_heading * acceleration_y_ned;
+
+			float velocity_x_setpoint_body_frame = cos_heading * velocity_x_setpoint + sin_heading * velocity_y_setpoint;
+			float velocity_y_setpoint_body_frame = -sin_heading * velocity_x_setpoint + cos_heading * velocity_y_setpoint;
+
+			thrust_setpoint.timestamp = now;
+			thrust_setpoint.xyz[0] = pid_calculate(&_x_velocity_pid, velocity_x_setpoint_body_frame, velocity_x_body_frame, acceleration_x_body_frame, dt)*thrust_scaling.get();
+			thrust_setpoint.xyz[1] = pid_calculate(&_y_velocity_pid, velocity_y_setpoint_body_frame, velocity_y_body_frame, acceleration_y_body_frame, dt)*thrust_scaling.get();
 			thrust_setpoint.xyz[2] = 0.0f;
 
 
