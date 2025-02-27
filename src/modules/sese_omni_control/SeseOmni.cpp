@@ -252,11 +252,29 @@ void SeseOmni::Run()
 			torque_setpoint.timestamp = now;
 			torque_setpoint.xyz[0] = 0.0f;
 			torque_setpoint.xyz[1] = 0.0f;
-			torque_setpoint.xyz[2] = pid_calculate(&_att_pid, heading_setpoint, heading, 0.0f, dt)*torque_scaling.get();
 
+			// Compute shortest heading error
+			float heading_error = atan2(sin(heading_setpoint - heading), cos(heading_setpoint - heading));
+			// Heading tolerance
+			const float heading_tolerance = math::radians(2.0f); // 2 degrees
+			if (fabs(heading_error) < heading_tolerance) {
+				torque_setpoint.xyz[2] = 0.0f;
+			} else {
+				torque_setpoint.xyz[2] = pid_calculate(&_att_pid, heading_error, 0.0f, 0.0f, dt) * torque_scaling.get();
+			}
 
-			float velocity_x_setpoint = pid_calculate(&_x_pos_pid, x_pos_setpoint, x_pos_ned, velocity_x_ned, dt);
-			float velocity_y_setpoint = pid_calculate(&_y_pos_pid, y_pos_setpoint, y_pos_ned, velocity_y_ned, dt);
+			// Position tolerance
+			const float position_tolerance = 0.1f; // 10 cm
+			float velocity_x_setpoint;
+			float velocity_y_setpoint;
+			if (fabs(x_pos_ned - x_pos_setpoint) < position_tolerance &&
+			fabs(y_pos_ned - y_pos_setpoint) < position_tolerance) {
+				velocity_x_setpoint = 0.0f;
+				velocity_y_setpoint = 0.0f;
+			} else {
+				velocity_x_setpoint = pid_calculate(&_x_pos_pid, x_pos_setpoint, x_pos_ned, velocity_x_ned, dt);
+				velocity_y_setpoint = pid_calculate(&_y_pos_pid, y_pos_setpoint, y_pos_ned, velocity_y_ned, dt);
+			}
 
 			// Transformation from NED to body frame
 			float sin_heading = sin(heading);
@@ -270,8 +288,17 @@ void SeseOmni::Run()
 			float velocity_y_setpoint_body_frame = -sin_heading * velocity_x_setpoint + cos_heading * velocity_y_setpoint;
 
 			thrust_setpoint.timestamp = now;
-			thrust_setpoint.xyz[0] = pid_calculate(&_x_velocity_pid, velocity_x_setpoint_body_frame, velocity_x_body_frame, acceleration_x_body_frame, dt)*thrust_scaling.get();
-			thrust_setpoint.xyz[1] = pid_calculate(&_y_velocity_pid, velocity_y_setpoint_body_frame, velocity_y_body_frame, acceleration_y_body_frame, dt)*thrust_scaling.get();
+
+			const float velocity_tolerance = 0.1f; // 0.1 m/s
+			if (fabs(velocity_x_setpoint_body_frame) < velocity_tolerance &&
+			fabs(velocity_y_setpoint_body_frame) < velocity_tolerance) {
+				thrust_setpoint.xyz[0] = 0.0f;
+				thrust_setpoint.xyz[1] = 0.0f;
+			} else {
+				thrust_setpoint.xyz[0] = pid_calculate(&_x_velocity_pid, velocity_x_setpoint_body_frame, velocity_x_body_frame, acceleration_x_body_frame, dt) * thrust_scaling.get();
+				thrust_setpoint.xyz[1] = pid_calculate(&_y_velocity_pid, velocity_y_setpoint_body_frame, velocity_y_body_frame, acceleration_y_body_frame, dt) * thrust_scaling.get();
+			}
+
 			thrust_setpoint.xyz[2] = 0.0f;
 
 
